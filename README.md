@@ -1,4 +1,6 @@
-Musify 🎵 
+#Musify 🎵
+
+
 Musify is a feature-rich music application designed to elevate your music listening and sharing experience. With Musify, you can explore, connect, and share your love for music in innovative ways.
 
 Features
