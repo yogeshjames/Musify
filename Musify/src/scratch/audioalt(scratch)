@@ -1,0 +1,184 @@
+import React from "react";
+import AudioPlayer from "./Audioplayer";
+
+function Audio({ src }) {/// replace the audioplayer file src with src.preview_url if  u want to skip and do any changes coz this mp3 doesnt work properly
+  return (
+    <div className="audio-player">
+        
+      <div className='audio-player p-4 bg-pink-200 rounded-lg shadow-lg flex items-center  font-serif;'>
+            <img src={src.album.images[0].url} alt={src.name} className='w-20 h-20 object-cover rounded-md mr-4' />
+            <div className='song-details'>
+            <AudioPlayer src={`https://yank.g3v.co.uk/track/${src.id}`} />//even use src.preview_url
+              <h2 className='text-xl font-bold'>{src.name}</h2>
+              <h2 className='text-lg text-gray-700'>{src.artists[0].name}</h2>
+            </div>
+            </div>
+    </div>
+  );
+}
+
+export default Audio;
+
+
+
+import React, { useState, useEffect, useRef } from 'react';
+import { AiOutlinePlayCircle, AiOutlinePauseCircle, AiOutlinePlusCircle, AiOutlineMinusCircle } from 'react-icons/ai';
+
+const formatTime = (time) => {
+  const minutes = Math.floor(time / 60);
+  const seconds = Math.floor(time % 60);
+  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+};
+
+const AudioPlayer = ({ src }) => {
+  const [isplaying, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentTime, setcurrenttime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const audioRef = useRef(new Audio(src));
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    audio.src = src;
+    setLoaded(false);
+
+    const Data = () => {
+      setLoaded(true);
+      setDuration(audio.duration);
+    };
+
+    const timeUpdate = () => {
+      const progress = (audio.currentTime / audio.duration) * 100;
+      setProgress(progress);
+      setcurrenttime(audio.currentTime);
+    };
+
+    audio.addEventListener('loadeddata', Data);
+    audio.addEventListener('timeupdate', timeUpdate);
+
+    return () => {
+      audio.pause();
+      audio.removeEventListener('loadeddata', Data);
+      audio.removeEventListener('timeupdate', timeUpdate);
+    };
+  }, [src]);
+
+  const skipF = () => {
+    const audio = audioRef.current;
+    audio.currentTime = Math.min(audio.currentTime + 10, audio.duration);
+  };
+
+  const skipB = () => {
+    const audio = audioRef.current;
+    audio.currentTime = Math.max(audio.currentTime - 10, 0);
+  };
+
+  const playPause = () => {
+    const audio = audioRef.current;
+    if (isplaying) {
+      audio.pause();
+    } else {
+      audio.play();
+    }
+    setPlaying(!isplaying);
+  };
+
+  const Progressbar = (e) => {
+    const audio = audioRef.current;
+    const newP= parseInt(e.target.value, 10);
+    const newtime = (newP / 100) * audio.duration;
+    audio.currentTime = newtime;
+    setProgress(newP);
+    setcurrenttime(newtime);
+  };
+
+  return (
+    <div className=" absolute bottom-6 left-72 shadow-lg flex items-center justify-between w-2/3">
+      {!loaded && <div>Loading...</div>}
+      {loaded && (
+        <>
+          <div className="controls flex items-center space-x-4">
+            <button onClick={skipB} className="text-3xl text-gray-700">
+              <AiOutlineMinusCircle />
+            </button>
+            <button onClick={playPause} className="text-3xl text-gray-700">
+              {isplaying ? <AiOutlinePauseCircle /> : <AiOutlinePlayCircle />}
+            </button>
+            <button onClick={skipF} className="text-3xl text-gray-700">
+              <AiOutlinePlusCircle />
+            </button>
+          </div>
+          <div className="progress-bar flex items-center space-x-2 w-full">
+            <span className="text-gray-700">{formatTime(currentTime)}</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={progress}
+              onChange={Progressbar}
+              className="w-full"
+            />
+            <span className="text-gray-700">{formatTime(duration)}</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+//export default AudioPlayer;
+
+
+
+import React, { useEffect, useState } from "react";
+//import AudioPlayer from "./Audioplayer";
+import axios from 'axios';/// RELOAD THE PAGE IF U FACE ANY ERROR
+
+function Audio({ src }) {
+  const [link, setLink] = useState(null); 
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+       
+      try {
+        const query= `https://open.spotify.com/track/${src.id}`
+        const url = `https://itzpire.com/download/aio?url=${query}`///using this website to get the mp3 file
+      const response = await fetch(url)
+      const data = await response.json()//since i use fetch i manually convert get request is not working idk why 
+        setLink(data.data.download)
+        setLoading(false)
+      } catch (error) {
+        console.error("Error:", error);
+      } 
+    };
+
+    fetchData(); 
+  }, [src.id,]); 
+
+  if (loading) {
+    return <p>Loading audio...</p>;
+  }
+
+  function till(){
+
+  }
+
+
+  return (
+    <div className="audio-player">
+      <div className='audio-player p-4 bg-pink-200 rounded-lg shadow-lg flex items-center  font-serif;'>
+        <img src={src.album.images[0].url} alt={src.name} className='w-20 h-20 object-cover rounded-md mr-4' />
+        <div className='song-details'>
+          {link ? <AudioPlayer src={link} func={till}/> : <p>No audio available</p>}
+          <h2 className='text-xl font-bold'>{src.name}</h2>
+          <h2 className='text-lg text-gray-700'>{src.artists[0].name}</h2>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+//export default Audio;

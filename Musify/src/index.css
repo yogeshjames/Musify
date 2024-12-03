@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.button-hover-effect {
+    transition: transform 0.2s ease-in-out;
+  }
+  
+  .button-hover-effect:hover {
+    transform: scale(1.2);
+  }
+  

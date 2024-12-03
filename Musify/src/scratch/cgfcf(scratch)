@@ -1,0 +1,276 @@
+const express = require("express")
+const mongoose = require("mongoose")
+const cors = require("cors");
+const bodyParser = require('body-parser');
+const app = express();
+const axios = require('axios');
+app.use(cors());
+app.use(express.json());
+
+mongoose.connect('mongodb://127.0.0.1:27017/music', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  }).then(() => {
+    console.log('Connected to MongoDB');
+  }).catch(err => {
+    console.error('Error connecting to MongoDB', err);
+  });
+
+  const loginschema = new mongoose.Schema({
+    name:String,
+    email:String,
+    password:String,
+    id:Number,
+    liked:Array
+   });
+ const loginform = mongoose.models.login || mongoose.model('login',loginschema);
+
+const playlistschema = new mongoose.Schema({
+
+  user:Number,
+  name:String,
+  songs:{type:Array,default:[]},
+  id:Number
+});
+
+const playlist = mongoose.models.playlists || mongoose.model('playlists',playlistschema);
+
+
+
+ app.get('/auth', async (req,res)=>{
+
+    try {
+        const { username, password } = req.query; 
+        const user = await loginform.findOne({ email: username, password: password });
+        const name = user.name;
+        console.log(name)
+        if (user) {
+          res.status(200)
+          res.json({ success: true, message: 'Login successful', name:name , id: user.id});
+          return;
+        } else {
+          res.status(201)
+          res.json({ success: false, message: 'Invalid email or password' });
+          return;
+        }
+      } catch (error) {
+        res.status(500)
+        res.json({ success: false, message: 'Server error', error });
+      }
+    });
+
+var id=0;
+app.post('/register',  (req,res)=>{
+
+        const { name, email, password } = req.body;
+        if (!name || !email || !password) {
+        res.json({ message: 'All fields are required' });
+          return res.status(400)
+          
+        }
+   
+    try {
+        const newUser = {
+            name:name,
+          email: email,
+          password: password,
+          id:id
+        }
+        loginform.insertMany(newUser);
+         console.log(loginform.find());
+         res.status(200)
+         res.json({ message: 'User registered successfully'});
+         id++;
+      } catch (error) {
+        console.error('Error saving user:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    })
+
+
+    app.get('/likedd', async (req,res)=>{
+
+      const kk=req.query.id;
+      try{
+      const user = await loginform.findOne({ id: kk }); 
+      res.status(200).json({ likedsongs: user.liked });
+
+  
+      }
+      catch (err){
+        console.log(err)
+      }
+
+    })
+
+
+    app.post('/like', async (req, res) => {
+      const { userId, songId } = req.body;
+    
+      try {
+        const user = await loginform.findOne({ id: userId });
+    
+        if (!user) {
+          res.status(404).json({ message: 'User not found' });
+          return;
+        }
+    
+        if (!user.liked.includes(songId)) {
+          user.liked.push(songId);
+          await user.save();
+        }
+    
+        res.status(200).json({ message: 'Song liked successfully' });
+      } catch (error) {
+        console.error('Error liking song:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+      }
+    });
+
+
+    app.post('/unlike', async (req, res) => {
+      const { userId, songId } = req.body;
+    
+      try {
+        const user = await loginform.findOne({ id: userId });
+    
+        if (!user) {
+          res.status(404).json({ message: 'User not found' });
+          return;
+        }
+    
+        if (user.liked.includes(songId)) {
+          const index = user.liked.indexOf(songId);
+         user.liked.splice(index, 1);//REMOVING THE SONG
+         console.log(user.liked)
+         await user.save();
+        }
+    
+        res.status(200).json({ message: 'Song liked successfully' });
+      } catch (error) {
+        console.error('Error liking song:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+      }
+    });
+
+
+
+var count=0;
+app.post('/newplaylist',  (req,res)=>{
+
+      const { name,id,user} = req.body;
+     
+  try {
+      const newplaylist = {
+          name:name,
+         user:user,// this is the user id (for future private playlist)
+         id:id
+      }
+      playlist.insertMany(newplaylist);
+       console.log(playlist.find());
+       res.status(200)
+       res.json({ message: 'playlist added'});
+
+    } catch (error) {
+      console.error('Error saving playlist:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  })
+
+  app.post('/likedplaylist',  async (req,res)=>{
+
+    const { name,user,songs} = req.body;
+   
+try {
+    const newplaylist = {
+        name:name,
+       user:user,// this is the user id (for future private playlist)
+       id:100,
+       songs:songs
+    }
+  await  playlist.deleteMany({id:100})
+    await playlist.insertMany(newplaylist);
+     console.log(playlist.find());
+     res.status(200)
+     res.json({ message: 'liked playlist added'});
+  } catch (error) {
+    console.error('Error saving playlist:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+})
+
+
+ 
+
+  app.get('/playlists', async (req,res)=>{
+
+    const {id}= req.query;
+    
+    try{
+    const user = await playlist.find({$or:[{id:200},{id:id},{id:100}]}); //getting common playlist and private playlist and liked playlist
+    res.status(200).json(user);
+    }
+    catch (err){
+      console.log(err)
+    }
+
+  })
+
+ app.get('/playlistdetails', async (req, res)=> {
+  try {
+    const results = await playlist.find({});
+    res.json(results);
+    console.log(results)
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: ' Server Error' });
+  }
+}
+) 
+
+app.post('/addtoplaylist', async (req, res)=> {
+
+  const { id , song}=req.body;
+  try {
+    const results = await playlist.find({_id:id});
+    console.log(results)
+    results[0].songs.push(song);
+    results[0].save();
+    console.log(results[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: ' Server Error' });
+  }
+}
+) 
+    
+/////SPOTIFY TOKEN AND ACCESS
+    const client_id = '2d8593b4464f46a8897a8472948333d5';
+    const client_secret = 'a7183a07150343c1935e362e596b0fba';
+    
+    app.use(bodyParser.json());
+    
+    app.post('/get-token', async (req, res) => {
+      const authOptions = {
+        method: 'post',
+        url: 'https://accounts.spotify.com/api/token',
+        headers: {
+          'Authorization': 'Basic ' + Buffer.from(client_id + ':' + client_secret).toString('base64'),
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        data: 'grant_type=client_credentials'
+      };
+    
+      try {
+        const response = await axios(authOptions);
+        res.json(response.data);
+        console.log(res.json)
+      } catch (error) {
+        res.json({ error: error.message });
+        console.log(error)
+      }
+    });
+       
+    app.listen(3000, () => {
+      console.log('Server is running on port 3000');
+    });
